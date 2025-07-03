@@ -131,3 +131,91 @@ MIT License
 ## Author
 
 - [Your Name](mailto:your.email@example.com)
+
+
+## Email Verification (`VerifyEmail` Component)
+
+This component handles email verification for client users. When a user clicks the verification link sent to their email, they are routed to `/verify-email/:token`. The component:
+
+- Extracts the token from the URL.
+- Sends a POST request to the backend to verify the token.
+- Displays a loading spinner while verifying.
+- Shows a success message if verification succeeds.
+- Shows an error message if verification fails or the token is invalid/expired.
+
+### Usage
+
+- The route should be defined as:
+  ```jsx
+  <Route path="/verify-email/:token" element={<VerifyEmail />} />
+  ```
+- The backend endpoint should accept a POST request with `{ token }` in the body.
+
+### Example Test Cases
+
+You can use Jest and React Testing Library to test this component. Example test cases:
+
+```javascript
+import React from 'react';
+import { render, screen, waitFor } from '@testing-library/react';
+import VerifyEmail from '../VerifyEmail';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import apiClient from '../../api/client';
+
+jest.mock('../../api/client');
+
+const renderWithRouter = (token) => {
+  return render(
+    <MemoryRouter initialEntries={[`/verify-email/${token}`]}>
+      <Routes>
+        <Route path="/verify-email/:token" element={<VerifyEmail />} />
+      </Routes>
+    </MemoryRouter>
+  );
+};
+
+describe('VerifyEmail', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('shows loading spinner while verifying', async () => {
+    apiClient.post.mockImplementation(() => new Promise(() => {}));
+    renderWithRouter('sometoken');
+    expect(screen.getByText(/verifying your email address/i)).toBeInTheDocument();
+  });
+
+  it('shows success message on successful verification', async () => {
+    apiClient.post.mockResolvedValue({ data: {} });
+    renderWithRouter('validtoken');
+    await waitFor(() => {
+      expect(screen.getByText(/Email Verified Successfully/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows error message on verification failure', async () => {
+    apiClient.post.mockRejectedValue({ response: { data: { error: 'Invalid token' } } });
+    renderWithRouter('invalidtoken');
+    await waitFor(() => {
+      expect(screen.getByText(/Verification Failed/i)).toBeInTheDocument();
+      expect(screen.getByText(/Invalid token/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows error if no token is provided', async () => {
+    render(
+      <MemoryRouter initialEntries={['/verify-email/']}>
+        <Routes>
+          <Route path="/verify-email/" element={<VerifyEmail />} />
+        </Routes>
+      </MemoryRouter>
+    );
+    await waitFor(() => {
+      expect(screen.getByText(/Verification Failed/i)).toBeInTheDocument();
+      expect(screen.getByText(/No verification token provided/i)).toBeInTheDocument();
+    });
+  });
+});
+```
+
+---
